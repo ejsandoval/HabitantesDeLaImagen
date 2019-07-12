@@ -25,7 +25,7 @@ int factor = 2; // factor que reduce dimensiones >> aumenta velocidad de
 
 boolean saved = false;
 
-int brightnessValue = 2;
+int brightnessValue = 30;
 
 int row = 0;
 int column = 0;
@@ -64,9 +64,13 @@ void draw() {
   for (int i = 0; i < faces.length; i++) {
     // loop through columns
     row = faces[i].y;
-    column = round(map(round(200 * noise(faces[i].x)), 0, 200, faces[i].x - 250,
-                       faces[i].x + faces[i].width + 150));
-    // column = faces[i].x;
+    int noise = round(200 * noise(faces[i].x));
+    if (faces[i].x - 150 >= 0 && faces[i].x + faces[i].width + 150 < cam.width)
+      column = round(map(noise, 0, 200, faces[i].x - 150,
+                         faces[i].x + faces[i].width + 150));
+    else
+      column =
+          round(map(noise, 0, 200, faces[i].x, faces[i].x + faces[i].width));
     while (column < faces[i].x + faces[i].width) {
       // println("Sorting Column " + column);
       cam.loadPixels();
@@ -75,8 +79,8 @@ void draw() {
       cam.updatePixels();
     }
   }
-  tint(255, 50);
-  delay(200);
+  //tint(255, 50);
+  //delay(50);
   image(cam, 0, 0, width, height);
   /*
   if (faces.length > 0){
@@ -105,10 +109,10 @@ void sortColumn(Rectangle[] faces, int z) {
     yend = 0;
   }
   while (yend < cam.height - 1) {
-    int noiseEnd = round(400 * noise(column));
-    if (cam.height - noiseEnd > 0) {
-      y = getFirstBrightY(x, y, cam.height - noiseEnd);
-      yend = getNextDarkY(x, y, cam.height - noiseEnd);
+    int noiseEnd = round(500 * noise(column));
+    if (faces[z].y + faces[z].height + noiseEnd < cam.height) {
+      y = getFirstBrightY(x, y, faces[z].y + faces[z].height + noiseEnd);
+      yend = getNextDarkY(x, y, faces[z].y + faces[z].height + noiseEnd);
     } else {
       y = getFirstBrightY(x, y, cam.height);
       yend = getNextDarkY(x, y, cam.height);
