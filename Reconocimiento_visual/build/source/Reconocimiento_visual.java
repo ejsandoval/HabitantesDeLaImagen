@@ -1,6 +1,26 @@
-import processing.video.*;
-import gab.opencv.*;
-import java.awt.*;
+import processing.core.*; 
+import processing.data.*; 
+import processing.event.*; 
+import processing.opengl.*; 
+
+import processing.video.*; 
+import gab.opencv.*; 
+import java.awt.*; 
+
+import java.util.HashMap; 
+import java.util.ArrayList; 
+import java.io.File; 
+import java.io.BufferedReader; 
+import java.io.PrintWriter; 
+import java.io.InputStream; 
+import java.io.OutputStream; 
+import java.io.IOException; 
+
+public class Reconocimiento_visual extends PApplet {
+
+
+
+
 
 /*
 Osvaldo Torres and Esteban Sandoval, 2019
@@ -13,7 +33,7 @@ Kim Asendorf | 2010 | kimasendorf.com
 
 PImage photo;
 int pixelcount;
-color pixelcolor;
+int pixelcolor;
 
 Capture cam;
 OpenCV opencv;
@@ -25,17 +45,17 @@ int factor = 2; // factor que reduce dimensiones >> aumenta velocidad de
 
 boolean saved = false;
 
-int brightnessValue = 2;
+int brightnessValue = 200;
 
 int row = 0;
 int column = 0;
 boolean image = false;
 
-void settings() {
+public void settings() {
   size(ancho / factor, alto / factor); // Dimensiones de pantalla
 }
 
-void setup() {
+public void setup() {
 
   cam = new Capture(this, ancho / factor,
                     alto / factor); // iniciar captura, dimensiones
@@ -52,7 +72,7 @@ void setup() {
   strokeWeight(5);     // ancho de linea
 }
 
-void draw() {
+public void draw() {
   if (cam.available()) {
     // Reads the new frame
     cam.read();
@@ -86,7 +106,7 @@ void draw() {
   }*/
 }
 
-void sortColumn(Rectangle[] faces, int z) {
+public void sortColumn(Rectangle[] faces, int z) {
   // current column
   int x = column;
 
@@ -119,8 +139,8 @@ void sortColumn(Rectangle[] faces, int z) {
 
     int sortLength = yend - y;
 
-    color[] unsorted = new color[sortLength];
-    color[] sorted = new color[sortLength];
+    int[] unsorted = new int[sortLength];
+    int[] sorted = new int[sortLength];
 
     for (int i = 0; i < sortLength; i++) {
       unsorted[i] = cam.pixels[x + (y + i) * cam.width];
@@ -135,9 +155,9 @@ void sortColumn(Rectangle[] faces, int z) {
 }
 
 // brightness y
-int getFirstBrightY(int x, int y, int height) {
+public int getFirstBrightY(int x, int y, int height) {
   if (y < height) {
-    while (brightness(cam.pixels[x + y * cam.width]) < brightnessValue) {
+    while (brightness(cam.pixels[x + y * cam.width]) > brightnessValue) {
       y++;
       if (y >= height)
         return -1;
@@ -147,14 +167,23 @@ int getFirstBrightY(int x, int y, int height) {
   return y;
 }
 
-int getNextDarkY(int x, int y, int height) {
+public int getNextDarkY(int x, int y, int height) {
   y++;
   if (y < height) {
-    while (brightness(cam.pixels[x + y * cam.width]) > brightnessValue) {
+    while (brightness(cam.pixels[x + y * cam.width]) < brightnessValue) {
       y++;
       if (y >= height)
         return height - 1;
     }
   }
   return y - 1;
+}
+  static public void main(String[] passedArgs) {
+    String[] appletArgs = new String[] { "Reconocimiento_visual" };
+    if (passedArgs != null) {
+      PApplet.main(concat(appletArgs, passedArgs));
+    } else {
+      PApplet.main(appletArgs);
+    }
+  }
 }
