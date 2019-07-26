@@ -11,9 +11,7 @@ ASDF Pixel Sort
 Kim Asendorf | 2010 | kimasendorf.com
 */
 
-PImage photo;
-int pixelcount;
-color pixelcolor;
+PImage glitch;
 
 Capture cam;
 OpenCV opencv;
@@ -24,19 +22,33 @@ int factor = 2; // factor que reduce dimensiones >> aumenta velocidad de
                 // muestreo
 
 boolean saved = false;
+boolean sortBool; // boolean that changes every drawn frame for reversing sort
 
-int brightnessValue = 30;
+int brightnessValue;
 
 int row = 0;
 int column = 0;
-boolean image = false;
+int startTime;
+int currentTime;
+int faceStartTime = 0;
+int faceTime = 30000;
+int faceChangeStartTime;
+int elapsed;
+int currentDetectedFaces;
+int prevDetectedFaces;
+int readIndex = 0;
+int numReadings = 30;
+int[] readings;
+boolean faceDetected = false;
 
 void settings() {
   size(ancho / factor, alto / factor); // Dimensiones de pantalla
 }
 
 void setup() {
-
+  // fullScreen(1);
+  startTime = 0;
+  elapsed = 0;
   cam = new Capture(this, ancho / factor,
                     alto / factor); // iniciar captura, dimensiones
   opencv = new OpenCV(this, ancho / factor, alto / factor); // iniciar OPENCV
@@ -50,54 +62,111 @@ void setup() {
   noFill();            // figuras geometricas sin relleno
   stroke(255, 255, 0); // color amarillo de linea
   strokeWeight(5);     // ancho de linea
+  readings = new int[numReadings];
+  for (int i = 0; i < numReadings; i++) {
+    readings[i] = 0;
+  }
 }
 
 void draw() {
+  translate(width, height/2 - 1600/2);
+  scale(1.6);
+  rotate(HALF_PI);
+
+  elapsed = millis() - startTime;
+
+  // Reads the new frame
   if (cam.available()) {
-    // Reads the new frame
     cam.read();
   }
   opencv.loadImage(cam);               // cargar captura de video a procesar
   Rectangle[] faces = opencv.detect(); // detectar caras
-  image(cam, 0, 0);                    // mostrar captura de video
-  // Dibujar marcos recorriendo la lista faces
-  for (int i = 0; i < faces.length; i++) {
-    // loop through columns
-    row = faces[i].y;
-    int noise = round(200 * noise(faces[i].x));
-    if (faces[i].x - 150 >= 0 && faces[i].x + faces[i].width + 150 < cam.width)
-      column = round(map(noise, 0, 200, faces[i].x - 150,
-                         faces[i].x + faces[i].width + 150));
-    else
-      column =
-          round(map(noise, 0, 200, faces[i].x, faces[i].x + faces[i].width));
-    while (column < faces[i].x + faces[i].width) {
-      // println("Sorting Column " + column);
-      cam.loadPixels();
-      sortColumn(faces, i);
-      column++;
-      cam.updatePixels();
+  readings[readIndex] = faces.length;
+  int sum = 0;
+  for (int value : readings) {
+    sum += value;
+  }
+  currentDetectedFaces = Math.round(sum / numReadings);
+  currentTime = millis();
+
+  println("prev: ", prevDetectedFaces);
+  println("current: ", currentDetectedFaces);
+
+  if (faceChangeStartTime == 0) {
+    prevDetectedFaces = faces.length;
+    faceChangeStartTime = currentTime;
+  }
+
+  if (currentDetectedFaces > prevDetectedFaces && !faceDetected) {
+    faceDetected = true;
+    prevDetectedFaces++;
+    startTime = currentTime;
+  }
+  elapsed = currentTime - startTime;
+  println(faceDetected);
+
+  if (faceDetected && elapsed > faceTime) {
+    faceDetected = false;
+    prevDetectedFaces--;
+    int S = second();
+    int M = minute();
+    int h = hour();
+    int d = day();   // Values from 1 - 31
+    int m = month(); // Values from 1 - 12
+    int y = year();  // 2003, 2004, 2005, etc.
+    String filename = String.valueOf(y) + "-" + String.valueOf(m) + "-" +
+                      String.valueOf(d) + " " + String.valueOf(h) + ":" +
+                      String.valueOf(M) + ":" + String.valueOf(S) + ".jpg";
+    save(filename);
+  }
+
+  if (faceDetected && elapsed < 5000) {
+    glitch = createImage(ancho / factor, alto / factor, ARGB);
+    glitch.loadPixels();
+  }
+
+  // Setting brightness value for each frame
+  brightnessValue = round(random(15, 50));
+  // Loading cam pixels for glitch generation
+  cam.loadPixels();
+
+  // loop through columns
+  if (faceDetected) {
+    for (int i = 0; i < faces.length; i++) {
+      row = faces[i].y;
+      int random = round(random(0, 100));
+      column = round(map(random, 0, 100, faces[i].x - 20, faces[i].x));
+      if (column < 0)
+        column = 0;
+      int end = round(map(random, 0, 100, faces[i].x + faces[i].width,
+                          faces[i].x + faces[i].width + 20));
+      if (end > ancho / factor)
+        end = ancho / factor;
+      while (column <= end) {
+        sortColumn(faces, i);
+        column++;
+        glitch.updatePixels();
+      }
     }
   }
-  //tint(255, 50);
-  //delay(50);
+  tint(190, 240, 250, 255);
+  // Show camera image and place on top glitch if a face is detected
   image(cam, 0, 0, width, height);
-  /*
-  if (faces.length > 0){
-          ellipse(faces[0].x + faces[0].width/2, faces[0].y + faces[0].height/2,
-  faces[0].width, faces[0].height); //Dibujar marco eliptico rect(faces[0].x,
-  faces[0].y, faces[0].width, faces[0].height); //Dibujar marco rectangular
-  }*/
+  if (faceDetected)
+    image(glitch, 0, 0, width, height);
+  println(readIndex);
+  readIndex++;
+  if (readIndex >= numReadings) {
+    readIndex = 0;
+  }
 }
 
 void sortColumn(Rectangle[] faces, int z) {
   // current column
   int x = column;
 
-  // int noiseStart = round(map(round(100*noise(column, row, z)), 0, 100,
-  // faces[z].y, faces[z].y + faces[z].height));
   // where to start sorting
-  int noiseStart = round(300 * noise(column));
+  int noiseStart = round(50 * noise(column));
   int y, yend;
   if (faces[z].y - noiseStart > 0) {
     y = faces[z].y - noiseStart;
@@ -109,7 +178,7 @@ void sortColumn(Rectangle[] faces, int z) {
     yend = 0;
   }
   while (yend < cam.height - 1) {
-    int noiseEnd = round(500 * noise(column));
+    int noiseEnd = round(150 * noise(column));
     if (faces[z].y + faces[z].height + noiseEnd < cam.height) {
       y = getFirstBrightY(x, y, faces[z].y + faces[z].height + noiseEnd);
       yend = getNextDarkY(x, y, faces[z].y + faces[z].height + noiseEnd);
@@ -131,8 +200,19 @@ void sortColumn(Rectangle[] faces, int z) {
     }
 
     sorted = sort(unsorted);
+
+    // if (sortBool == true) {
+    //   sorted = sort(unsorted);
+    //   sortBool = false;
+    // } else {
+    //   sorted = sort(unsorted);
+    //   sorted = reverse(sorted);
+    //   sortBool = true;
+    // }
+
     for (int i = 0; i < sortLength; i++) {
-      cam.pixels[x + (y + i) * cam.width] = sorted[i];
+      if (glitch.pixels[x + (y + i) * cam.width] == 0)
+        glitch.pixels[x + (y + i) * cam.width] = sorted[i];
     }
     y = yend + 1;
   }
